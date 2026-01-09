@@ -1,0 +1,5 @@
+# 依赖包
+requests
+jsonpath_ng
+pytest
+pyyaml

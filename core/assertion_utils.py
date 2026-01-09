@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Callable
 from core.clientbase import ClientBase  # 导入实际的 ClientBase 类
 
 # 复用 ClientBase 的日志配置
@@ -10,12 +10,55 @@ logger = logging.getLogger(__name__)
 
 class ResponseAssertor:
     """响应断言工具类（适配pytest原生断言，保留原始断言信息格式化逻辑）"""
+    # 断言方法映射字典
+    _ASSERTION_MAP: Dict[str, Callable] = {}
+
 
     def __init__(self, response, request_id: str = None):
         self.response = response
         self.request_id = request_id or getattr(response, "request_id", "unknown")
         # 复用ClientBase的响应解析方法（base_url为空不影响解析类方法）
         self.client = ClientBase(base_url="")
+
+        # 初始化断言方法映射（如果尚未初始化）
+        self._initialize_assertion_map()
+
+    def _initialize_assertion_map(self):
+        """初始化断言方法映射表"""
+        if not ResponseAssertor._ASSERTION_MAP:
+            ResponseAssertor._ASSERTION_MAP = {
+                # 状态断言
+                "status_code": self.assert_status_code,
+                "is_ok": self.assert_is_ok,
+                "is_redirect": self.assert_is_redirect,
+                "is_permanent_redirect": self.assert_is_permanent_redirect,
+
+                # JSON断言
+                "json_field": self.assert_json_field,
+                "json_path": self.assert_json_path,
+                "json_contains": self.assert_json_contains,
+
+                # 响应头断言
+                "response_header": self.assert_response_header,
+
+                # Cookie断言
+                "cookie": self.assert_cookie,
+
+                # 重定向断言
+                "redirect_count": self.assert_redirect_count,
+                "redirect_chain": self.assert_redirect_chain,
+
+                # 响应内容断言
+                "content_contains": self.assert_content_contains,
+                "content_length": self.assert_content_length,
+
+                # URL/查询参数断言
+                "response_url": self.assert_response_url,
+                "query_param": self.assert_query_param,
+
+                # 耗时断言
+                "elapsed_less_than": self.assert_elapsed_less_than,
+            }
 
     def _format_assert_msg(self, assert_type: str, expected: Any, actual: Any, msg: str = "") -> str:
         """格式化断言失败信息（清晰展示预期/实际值）"""
@@ -29,7 +72,7 @@ class ResponseAssertor:
             base_msg += f"附加说明：{msg}\n"
         return base_msg
 
-    # ========== 基础响应状态断言（适配pytest） ==========
+    # ========== 基础响应状态断言 ==========
     def assert_status_code(self, expected_code: int, msg: str = "") -> "ResponseAssertor":
         """断言响应状态码"""
         actual_code = self.client.status_code(self.response)
@@ -77,7 +120,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== JSON 字段断言（适配pytest） ==========
+    # ========== JSON 字段断言 ==========
     def assert_json_field(self, field_path: str, expected_value: Any, default: Any = None, encoding: str = None, msg: str = "") -> "ResponseAssertor":
         """断言JSON深层字段值（支持点分隔+数组索引，如data.list[0].id）"""
         actual_value = self.client.extract_json_field(
@@ -135,7 +178,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== 响应头断言（适配pytest） ==========
+    # ========== 响应头断言 ==========
     def assert_response_header(self, header_name: str, expected_value: str, default: str = None, msg: str = "") -> "ResponseAssertor":
         """断言指定响应头的值（忽略大小写）"""
         actual_value = self.client.extract_response_header_by_name(
@@ -162,7 +205,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== Cookie 断言（适配pytest） ==========
+    # ========== Cookie 断言 ==========
     def assert_cookie(self, cookie_name: str, expected_value: str, default: str = None, msg: str = "") -> "ResponseAssertor":
         """断言指定Cookie的值"""
         actual_value = self.client.extract_response_cookie_by_name(
@@ -176,7 +219,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== 重定向断言（适配pytest） ==========
+    # ========== 重定向断言 ==========
     def assert_redirect_count(self, expected_count: int, msg: str = "") -> "ResponseAssertor":
         """断言重定向次数"""
         actual_count = self.client.redirect_count(self.response)
@@ -199,7 +242,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== 响应内容断言（适配pytest） ==========
+    # ========== 响应内容断言 ==========
     def assert_content_contains(self, expected_str: str, encoding: str = None, msg: str = "") -> "ResponseAssertor":
         """断言响应文本包含指定字符串"""
         actual_text = self.client.text(self.response, encoding=encoding)
@@ -222,7 +265,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== URL/查询参数断言（适配pytest） ==========
+    # ========== URL/查询参数断言 ==========
     def assert_response_url(self, expected_url: str, msg: str = "") -> "ResponseAssertor":
         """断言响应最终URL（含重定向）"""
         actual_url = self.client.response_url(self.response)
@@ -247,7 +290,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== 耗时断言（适配pytest） ==========
+    # ========== 耗时断言 ==========
     def assert_elapsed_less_than(self, max_seconds: float, msg: str = "") -> "ResponseAssertor":
         """断言响应耗时小于指定秒数"""
         actual_seconds = self.client.elapsed_seconds(self.response)
@@ -259,7 +302,7 @@ class ResponseAssertor:
         )
         return self
 
-    # ========== 新增：自定义业务规则断言（适配pytest） ==========
+    # ========== 新增：自定义业务规则断言 ==========
     def assert_business_rule(self, rule_func: callable, rule_desc: str, msg: str = "", **kwargs) -> "ResponseAssertor":
         """
         自定义业务规则断言（支持任意复杂的业务逻辑判断）
@@ -301,4 +344,49 @@ class ResponseAssertor:
         # 日志记录：业务规则断言通过
         request_id = getattr(self.response, "request_id", "unknown")
         logger.debug(f"✅ 【业务规则断言】req_id={request_id}，规则[{rule_desc}]验证通过")
+        return self
+
+    # ========== 新增：从配置列表执行批量链式断言 ==========
+    def assert_from_config(self, assert_config: List[Dict[str, Any]]) -> "ResponseAssertor":
+        """
+        从配置列表执行批量链式断言
+        :param assert_config: 断言配置列表，每个元素为包含type字段的字典，其余为对应断言方法的关键字参数
+        :return: self（支持链式调用）
+        """
+        # 校验配置列表类型
+        if not isinstance(assert_config, list):
+            raise TypeError(f"assert_config必须是列表类型，实际传入：{type(assert_config).__name__}")
+
+        # 遍历执行每个断言配置
+        for idx, assert_item in enumerate(assert_config):
+            # 校验单个配置项类型
+            if not isinstance(assert_item, dict):
+                raise TypeError(f"assert_config第{idx}个元素必须是字典类型，实际传入：{type(assert_item).__name__}")
+
+            # 校验是否包含type字段
+            if "type" not in assert_item:
+                raise ValueError(
+                    f"assert_config第{idx}个元素缺少必填的'type'字段，当前配置项：{json.dumps(assert_item, ensure_ascii=False)}"
+                )
+
+            # 提取并校验断言类型
+            assert_type = assert_item.pop("type")
+            if assert_type not in self._ASSERTION_MAP:
+                supported_types = list(self._ASSERTION_MAP.keys())
+                raise ValueError(
+                    f"assert_config第{idx}个元素的断言类型'{assert_type}'不支持！\n"
+                    f"支持的断言类型：{supported_types}\n"
+                    f"当前配置项（已弹出type）：{json.dumps(assert_item, ensure_ascii=False)}"
+                )
+
+            # 执行断言（链式调用）
+            try:
+                self._ASSERTION_MAP[assert_type](**assert_item)
+            except Exception as e:
+                # 包装异常信息，定位出错的配置项
+                raise RuntimeError(
+                    f"执行assert_config第{idx}个元素的[{assert_type}]断言时失败！\n"
+                    f"配置项：{json.dumps({**assert_item, 'type': assert_type}, ensure_ascii=False)}"
+                ) from e
+
         return self

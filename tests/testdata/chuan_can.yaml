@@ -1,0 +1,38 @@
+login_cases:
+  - desc:
+      "count is right except success"
+    data:
+      username: test
+      password: "123456"
+    assert_config:
+      - type: status_code
+        expected_code: 200
+      - type: is_ok
+      - type: json_field
+        field_path: args.password
+        expected_value: "123456"
+      - type: json_path
+        jsonpath_expr: $.headers.Host
+        expected_value: httpbin.org
+      - type: json_contains
+        expected_dict: {"args": {"password": "123456","username": "test"}}
+
+  - desc:
+      "count is wrong except fail"
+    data:
+      username: test2
+      password: 1234562.
+      code: 1993
+    assert_config:
+      - type: status_code
+        expected_code: 200
+
+modify_count_case:
+  - desc:
+      "random test name"
+    data:
+      nickname: 张三
+      sex: man
+    assert_config:
+      - type: status_code
+        expected_code: 200

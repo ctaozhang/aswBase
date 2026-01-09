@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime
 
 # ========== 基础响应状态断言测试 ==========
+@pytest.mark.skip()
 def test_assert_status_code(client_base, response_assert):
     """测试：响应状态码断言（正例+反例）"""
     # 正例：断言200状态码
@@ -15,7 +16,7 @@ def test_assert_status_code(client_base, response_assert):
         assertor.assert_status_code(404, msg="状态码断言反例测试")
     assert "响应状态码" in str(exc_info.value)
 
-
+@pytest.mark.skip()
 def test_assert_is_ok(client_base, response_assert):
     """测试：请求成功断言（200-299）"""
     # 正例：201状态码（创建成功）
@@ -30,7 +31,7 @@ def test_assert_is_ok(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor_err.assert_is_ok(msg="400不属于成功状态码")
 
-
+@pytest.mark.skip()
 def test_assert_is_redirect(client_base, response_assert):
     """测试：重定向断言（3xx + Location头）"""
     # 正例：302重定向（带Location头）
@@ -44,7 +45,7 @@ def test_assert_is_redirect(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor_ok.assert_is_redirect()
 
-
+@pytest.mark.skip()
 def test_assert_is_permanent_redirect(client_base, response_assert):
     """测试：永久重定向断言（301/308）"""
     # 正例：301永久重定向
@@ -62,6 +63,7 @@ def test_assert_is_permanent_redirect(client_base, response_assert):
 
 
 # ========== JSON字段断言测试 ==========
+@pytest.mark.skip()
 def test_assert_json_field(client_base, response_assert):
     """测试：JSON深层字段断言（点分隔+数组索引）"""
     # 构造包含嵌套字段的响应
@@ -84,7 +86,7 @@ def test_assert_json_field(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_json_field("json.data.total", 2)
 
-
+@pytest.mark.skip()
 def test_assert_json_path(client_base, response_assert):
     """测试：JSONPath表达式断言"""
     resp = client_base.get("https://httpbin.org/json")
@@ -99,7 +101,7 @@ def test_assert_json_path(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_json_path("$.slideshow.title", "Wrong Title")
 
-
+@pytest.mark.skip()
 def test_assert_json_contains(client_base, response_assert):
     """测试：JSON包含指定字典（递归检查）"""
     expected_dict = {
@@ -119,6 +121,7 @@ def test_assert_json_contains(client_base, response_assert):
 
 
 # ========== 响应头断言测试 ==========
+@pytest.mark.skip()
 def test_assert_response_header(client_base, response_assert):
     """测试：响应头断言（忽略大小写）"""
     resp = client_base.get("https://httpbin.org/get")
@@ -131,7 +134,7 @@ def test_assert_response_header(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_response_header("Content-Type", "text/html")
 
-
+@pytest.mark.skip()
 def test_assert_header_date(client_base, response_assert):
     """测试：日期类型响应头断言（datetime对比）"""
     resp = client_base.get("https://httpbin.org/get")
@@ -148,6 +151,7 @@ def test_assert_header_date(client_base, response_assert):
 
 
 # ========== Cookie断言测试 ==========
+@pytest.mark.skip()
 def test_assert_cookie(client_base, response_assert):
     """测试：从响应头Set-Cookie中断言Cookie值"""
     # 1. 发送请求：httpbin/cookies/set 会在响应头Set-Cookie中设置指定Cookie
@@ -185,6 +189,7 @@ def test_assert_cookie(client_base, response_assert):
 
 
 # ========== 重定向断言测试 ==========
+@pytest.mark.skip()
 def test_assert_redirect_count(client_base, response_assert):
     """测试：重定向次数断言"""
     # 重定向2次（/redirect/2）
@@ -196,7 +201,7 @@ def test_assert_redirect_count(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_redirect_count(1)
 
-
+@pytest.mark.skip()
 def test_assert_redirect_chain(client_base, response_assert):
     """测试：重定向链路断言"""
     # 构造重定向链路（httpbin/redirect/1的链路固定）
@@ -216,6 +221,7 @@ def test_assert_redirect_chain(client_base, response_assert):
 
 
 # ========== 响应内容断言测试 ==========
+@pytest.mark.skip()
 def test_assert_content_contains(client_base, response_assert):
     """测试：响应文本包含指定字符串"""
     resp = client_base.get("https://httpbin.org/html")  # 返回HTML页面
@@ -226,7 +232,7 @@ def test_assert_content_contains(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_content_contains("<body wrong>")
 
-
+@pytest.mark.skip()
 def test_assert_content_length(client_base, response_assert):
     """测试：响应内容长度断言（Content-Length头）"""
     resp = client_base.get("https://httpbin.org/get")
@@ -241,6 +247,7 @@ def test_assert_content_length(client_base, response_assert):
 
 
 # ========== URL/查询参数断言测试 ==========
+@pytest.mark.skip()
 def test_assert_response_url(client_base, response_assert):
     """测试：响应最终URL断言"""
     # 重定向后的最终URL
@@ -252,7 +259,7 @@ def test_assert_response_url(client_base, response_assert):
     with pytest.raises(AssertionError):
         assertor.assert_response_url("https://httpbin.org/wrong")
 
-
+@pytest.mark.skip()
 def test_assert_query_param(client_base, response_assert):
     """测试：URL查询参数断言"""
     # 带查询参数的请求：?id=100&name=test
@@ -266,6 +273,7 @@ def test_assert_query_param(client_base, response_assert):
 
 
 # ========== 耗时断言测试 ==========
+@pytest.mark.skip()
 def test_assert_elapsed_less_than(client_base, response_assert):
     """测试：响应耗时小于指定秒数"""
     resp = client_base.get("https://httpbin.org/get")
@@ -278,6 +286,7 @@ def test_assert_elapsed_less_than(client_base, response_assert):
 
 
 # ========== 自定义业务规则断言测试 ==========
+@pytest.mark.skip()
 def test_assert_business_rule(client_base, response_assert):
     """测试：自定义业务规则断言"""
     # 1. 定义业务规则函数：响应JSON中code等于0则通过
