@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Union, Callable
 from core.clientbase import ClientBase  # 导入实际的 ClientBase 类
 
 # 复用 ClientBase 的日志配置
@@ -12,7 +12,6 @@ class ResponseAssertor:
     """响应断言工具类（适配pytest原生断言，保留原始断言信息格式化逻辑）"""
     # 断言方法映射字典
     _ASSERTION_MAP: Dict[str, Callable] = {}
-
 
     def __init__(self, response, request_id: str = None):
         self.response = response

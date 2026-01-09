@@ -1,5 +1,6 @@
 # 依赖包
-requests
+requests~=2.32.5
 jsonpath_ng
-pytest
-pyyaml
+pytest~=9.0.2
+pyyaml~=6.0.3
+urllib3~=2.5.0
