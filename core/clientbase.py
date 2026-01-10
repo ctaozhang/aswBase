@@ -6,23 +6,19 @@ Author: v_ctaozhang
 import re
 import time
 import json
-import logging
 import uuid
-
 import requests
-from core.data_utils import format_python_to_json
 from datetime import datetime
 from urllib3.util.retry import Retry
+from core.log_config import get_logger
 from requests.adapters import HTTPAdapter
+from core.data_utils import format_python_to_json
 from typing import Optional, Dict, Any, List, Union
 from urllib.parse import urlparse, parse_qs, unquote
 
-# 配置日志
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(filename)s:%(lineno)-4d - %(levelname)-6s %(message)s"
-)
-logger = logging.getLogger(__name__)
+
+# 使用封装的 get_logger
+logger = get_logger(__name__)
 
 class ClientBase():
     """基类：http基础客户端"""

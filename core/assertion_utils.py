@@ -1,12 +1,11 @@
 import json
-import logging
 from datetime import datetime
+from core.log_config import get_logger
 from typing import Any, Dict, List, Union, Callable
 from core.clientbase import ClientBase  # 导入实际的 ClientBase 类
 
-# 复用 ClientBase 的日志配置
-logger = logging.getLogger(__name__)
-
+# 使用封装的 get_logger
+logger = get_logger(__name__)
 
 class ResponseAssertor:
     """响应断言工具类（适配pytest原生断言，保留原始断言信息格式化逻辑）"""

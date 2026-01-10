@@ -1,8 +1,9 @@
 import pytest
-import logging
+from core.log_config import get_logger
 from core.data_utils import parse_yaml_to_params
 
-logger = logging.getLogger(__name__)
+# 使用封装的 get_logger
+logger = get_logger(__name__)
 
 # 1. 拆解YAML用例为参数名和参数值,用例名
 param_names, param_values, case_ids = parse_yaml_to_params("chuan_can.yaml", "login_cases")
@@ -35,7 +36,3 @@ def test_assert_status_code(client_base, response_assert, username, password, co
     # 方式2：硬编码断言(不需要参数化时,直接断言推荐)
     assertor.assert_json_field("args.username", username)
     assertor.assert_json_field("args.password", str(password))
-
-
-if __name__ == "__main__":
-    pytest.main(["-vs"])

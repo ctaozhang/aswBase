@@ -4,3 +4,4 @@ jsonpath_ng
 pytest~=9.0.2
 pyyaml~=6.0.3
 urllib3~=2.5.0
+pytest-html

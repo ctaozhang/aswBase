@@ -14,7 +14,7 @@ def client_base():
         base_url="https://api.your-domain.com",  # 可通过环境变量动态配置，后面进行优化
         timeout=30,
         max_retries=3,
-        default_headers={"User-Agent": "pytest-test/1.0"}
+        default_headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8"}
     )
     yield client  # 用例执行完后释放
     client.close()  # 关闭会话
