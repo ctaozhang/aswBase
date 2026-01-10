@@ -10,6 +10,7 @@ import logging
 import uuid
 
 import requests
+from core.data_utils import format_python_to_json
 from datetime import datetime
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
@@ -51,22 +52,21 @@ class ClientBase():
             self.session.mount("http://", adapter)
             self.session.mount("https://", adapter)
             # DEBUG级：🔧 配置相关
-            logger.debug(f"🔧 【初始化】重试策略配置完成：最大重试次数={max_retries}，重试状态码={retry_strategy.status_forcelist}")
+            # 留
+            logger.debug(f"🔧 【初始化】重试策略：maxRetry={max_retries}，retryCode={retry_strategy.status_forcelist}")
 
         # 设置默认请求头
         if self.default_headers:
             self.session.headers.update(self.default_headers)
-            # DEBUG级：🔧 配置相关
-            logger.debug(f"🔧 【初始化】默认请求头已设置：{self.default_headers}")
 
         # INFO级：✅ 成功标识，快速知晓客户端初始化完成
-        logger.info(f"✅ 【初始化】HTTP客户端创建成功：基础URL={self.base_url}，超时时间={self.timeout}s")
+        # logger.info(f"✅ 【初始化】HTTP客户端创建成功：基础URL={self.base_url}，超时时间={self.timeout}s")
 
     def _url_join(self, relative_url_path: str) -> str:
         """拼接请求URL（内部辅助方法）"""
         if relative_url_path.startswith("http://") or relative_url_path.startswith("https://"):
             # DEBUG级：🔗 链接相关，标识URL信息
-            logger.debug(f"🔗 【URL拼接】使用外部完整URL：{relative_url_path}")
+            # logger.debug(f"🔗 【URL拼接】使用外部完整URL：{relative_url_path}")
             return relative_url_path
         full_url = f"{self.base_url}/{relative_url_path.lstrip('/')}"
         # DEBUG级：🔗 链接相关，标识URL信息
@@ -87,11 +87,13 @@ class ClientBase():
         url = self._url_join(relative_url_path)
 
         # INFO级：🚀 启动标识，快速知晓请求开始
+        # 留
         logger.info(f"🚀 【请求开始】req_id={request_id}，方法={method}，URL={url}，超时设置={self.timeout}s")
 
         # DEBUG级：📋 表单/数据相关，标识请求详情
         req_headers = kwargs.get("headers", self.session.headers)
-        logger.debug(f"📋 【请求详情】req_id={request_id}，请求头：{dict(req_headers)}")
+        # 留
+        logger.debug(f"📋 【请求详情】req_id={request_id}，请求头：\n{format_python_to_json(dict(req_headers))}")
 
         # DEBUG级：📋 表单/数据相关，标识请求体详情
         if 'data' in kwargs:
@@ -116,10 +118,11 @@ class ClientBase():
             response.request_id = request_id
 
             # INFO级：🏁 完成标识，快速知晓请求结果
+            # 留
             logger.info(f"🏁 【请求完成】req_id={request_id}，状态码={response.status_code}，耗时={elapsed_time:.3f}s，重定向次数={len(response.history)}")
 
             # DEBUG级：📜 响应相关，标识响应详情
-            logger.debug(f"📜 【响应详情】req_id={request_id}，响应头：{dict(response.headers)}")
+            logger.debug(f"📜 【响应详情】req_id={request_id} ↓\n响应头：\n{format_python_to_json(dict(response.headers))}")
             logger.debug(f"📜 【响应详情】req_id={request_id}，最终URL：{response.url}")
 
             # 响应体日志（超长截断，区分JSON/文本）
@@ -127,7 +130,7 @@ class ClientBase():
                 try:
                     resp_json = response.json()
                     resp_str = json.dumps(resp_json, indent=4, ensure_ascii=False)
-                    logger.debug(f"📜 【响应详情】req_id={request_id}，响应体[JSON]：\n{resp_str}")
+                    logger.debug(f"📜 【响应详情】req_id={request_id} ↓ \n响应体[JSON]：\n{resp_str}")
                 except:
                     resp_str = response.text
                     logger.debug(f"📜 【响应详情】req_id={request_id}，响应体[文本]：\n{resp_str}")
@@ -146,15 +149,16 @@ class ClientBase():
                 exc_info=True  # 打印完整堆栈跟踪，测试环境调试核心
             )
             raise
-        finally:
-            # INFO级：🔚 收尾标识，知晓请求流程闭环
-            logger.info(f"🔚 【请求收尾】req_id={request_id}，请求生命周期结束")
+        # finally:
+        #     # INFO级：🔚 收尾标识，知晓请求流程闭环
+        #     logger.info(f"🔚 【请求收尾】req_id={request_id}，请求生命周期结束")
 
     """========== 请求方法封装 =========="""
     def get(self, relative_url_path: str, params: Optional[Dict] = None, **kwargs) -> requests.Response:
         """封装GET请求"""
         if params:
             # DEBUG级：📊 参数相关，标识查询参数详情
+            # 留
             logger.debug(f"📊 【GET请求】查询参数：{params}")
         return self._request('GET', relative_url_path, params=params, **kwargs)
 
@@ -224,7 +228,7 @@ class ClientBase():
                 response.encoding = encoding
             result = response.json()
             # DEBUG级：📊 数据提取相关，标识解析成功
-            logger.debug(f"📊 【数据返回】req_id={request_id}，JSON解析成功。")
+            # logger.debug(f"📊 【数据返回】req_id={request_id}，JSON解析成功。")
             return result
         except (json.JSONDecodeError, ValueError, TypeError) as e:
             # WARNING级：⚠️ 警告标识，提示非致命解析失败
@@ -278,6 +282,7 @@ class ClientBase():
         """判断请求是否成功（状态码 200-299 返回 True）"""
         request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
         is_success = response.ok
+        # 留
         logger.debug(f"✅ 【状态判断】req_id={request_id}，请求是否成功：{is_success}（状态码：{response.status_code}）")
         return is_success
 
@@ -488,6 +493,7 @@ class ClientBase():
                     # 字典嵌套数组场景：例如：slides[0] / items[1]
                     match = re.match(r'([^\[]+)\[(\d+)\]', segment)
                     if not match:
+                        # 留
                         logger.error(f"❌【字段提取】req_id={request_id}，路径片段{segment}格式错误")
                         return default
                     list_name, index_str = match.groups()
@@ -661,6 +667,7 @@ class ClientBase():
         if self.session:
             self.session.close()
             # DEBUG级：🗑️ 资源释放相关，标识会话关闭
+            # 留
             logger.debug(f"🗑️ 【资源释放】HTTP会话已成功关闭")
 
     # 上下文管理器支持

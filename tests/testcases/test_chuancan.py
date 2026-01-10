@@ -23,11 +23,9 @@ def test_assert_status_code(client_base, response_assert, username, password, co
         "password": password,
         "code": code
     }
-    logger.info(f"执行用例：用户名={username}，密码={password}")
 
     # 发送请求（httpbin的/get接口会原样返回请求参数，可直接验证）
     response = client_base.get("https://httpbin.org/get", params=params)
-    logger.info(f"响应数据：{response.json()}")
 
     # 断言
     assertor = response_assert(response)

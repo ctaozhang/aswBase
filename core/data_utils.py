@@ -1,3 +1,4 @@
+import json
 import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
@@ -64,3 +65,33 @@ def parse_yaml_to_params(yaml_file: str, case_key: str) -> Tuple[List[str], List
 
     # 进行返回tuple（参数名列表, 参数值列表，用例名列表）
     return param_names, param_values, case_ids
+
+def format_python_to_json(data: any, indent: int = 4, ensure_ascii: bool = False, sort_keys: bool = False) -> str:
+    """
+    将Python数据转换为格式化的JSON字符串
+
+    参数说明：
+    - data: 待转换的Python数据（支持可序列化的类型，见下方说明）
+    - indent: JSON缩进空格数，默认4（更易读）
+    - ensure_ascii: 是否强制ASCII编码，默认False（保留中文/特殊符号）
+    - sort_keys: 是否按字母序排序字典的key，默认False（保留原顺序）
+
+    返回值：
+    - 成功：格式化的JSON字符串
+    - 失败：包含错误信息的提示字符串
+    """
+    try:
+        # 核心转换逻辑
+        json_str = json.dumps(
+            data,
+            indent=indent,
+            ensure_ascii=ensure_ascii,
+            sort_keys=sort_keys,
+            # 额外处理：兼容datetime等特殊类型（可选）
+            default=lambda obj: str(obj) if hasattr(obj, '__str__') else repr(obj)
+        )
+        return json_str
+    except TypeError as e:
+        return f"转换失败：数据类型不可序列化 → {str(e)}"
+    except Exception as e:
+        return f"转换异常：{str(e)}"
