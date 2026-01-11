@@ -20,7 +20,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 # 使用封装的 get_logger
 logger = get_logger(__name__)
 
-class ClientBase():
+class ClientBase:
     """基类：http基础客户端"""
 
     def __init__(self, base_url: str, timeout=30, default_headers=None, max_retries=3, session=None):
@@ -39,10 +39,11 @@ class ClientBase():
 
         # 配置重试策略
         if max_retries > 0:
-            retry_strategy = Retry(total=max_retries,
-                  backoff_factor=1,
-                  status_forcelist=[429, 500, 502, 503, 504],
-                  allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"])
+            retry_strategy = Retry(
+                total=max_retries,
+                backoff_factor=1,
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"])
 
             adapter = HTTPAdapter(max_retries=retry_strategy)
             self.session.mount("http://", adapter)
@@ -101,42 +102,42 @@ class ClientBase():
             try:
                 json_str = json.dumps(json_data, ensure_ascii=False)[:1000] if len(json.dumps(json_data)) > 1000 else json.dumps(json_data, ensure_ascii=False)
                 logger.debug(f"📋 【请求详情】req_id={request_id}，请求体[JSON]：{json_str}（超长内容已截断）")
-            except:
-                logger.debug(f"📋 【请求详情】req_id={request_id}，请求体[JSON]：序列化失败，原始数据={str(json_data)[:500]}")
+            except Exception as e:
+                logger.debug(f"📋 【请求详情】req_id={request_id}，请求体[JSON]：序列化失败，错误信息:{e}")
 
         # 记录请求耗时
         start_time = time.perf_counter()
         try:
-            response = self.session.request(method, url, timeout=self.timeout, **kwargs)
+            respon = self.session.request(method, url, timeout=self.timeout, **kwargs)
             elapsed_time = time.perf_counter() - start_time
 
             # 给response绑定request_id属性
-            response.request_id = request_id
+            respon.request_id = request_id
 
             # INFO级：🏁 完成标识，快速知晓请求结果
             # 留
-            logger.info(f"🏁 【请求完成】req_id={request_id}，状态码={response.status_code}，耗时={elapsed_time:.3f}s，重定向次数={len(response.history)}")
+            logger.info(f"🏁 【请求完成】req_id={request_id}，状态码={respon.status_code}，耗时={elapsed_time:.3f}s，重定向次数={len(respon.history)}")
 
             # DEBUG级：📜 响应相关，标识响应详情
-            logger.debug(f"📜 【响应详情】req_id={request_id} ↓\n响应头：\n{format_python_to_json(dict(response.headers))}")
-            logger.debug(f"📜 【响应详情】req_id={request_id}，最终URL：{response.url}")
+            logger.debug(f"📜 【响应详情】req_id={request_id} ↓\n响应头：\n{format_python_to_json(dict(respon.headers))}")
+            logger.debug(f"📜 【响应详情】req_id={request_id}，最终URL：{respon.url}")
 
             # 响应体日志（超长截断，区分JSON/文本）
-            if response.text:
+            if respon.text:
                 try:
-                    resp_json = response.json()
+                    resp_json = respon.json()
                     resp_str = json.dumps(resp_json, indent=4, ensure_ascii=False)
                     logger.debug(f"📜 【响应详情】req_id={request_id} ↓ \n响应体[JSON]：\n{resp_str}")
-                except:
-                    resp_str = response.text
-                    logger.debug(f"📜 【响应详情】req_id={request_id}，响应体[文本]：\n{resp_str}")
+                except Exception as e:
+                    resp_str = respon.text
+                    logger.debug(f"📜 【响应详情】req_id={request_id}，响应体[文本]：\n{resp_str},错误信息:{e}")
 
             # WARNING级：⚠️ 警告标识，提示非致命问题
-            if response.history:
-                redirect_chain = [resp.url for resp in response.history] + [response.url]
+            if respon.history:
+                redirect_chain = [resp.url for resp in respon.history] + [respon.url]
                 logger.warning(f"⚠️ 【请求提醒】req_id={request_id}，请求发生重定向，链路：{redirect_chain}")
 
-            return response
+            return respon
         except requests.RequestException as e:
             elapsed_time = time.perf_counter() - start_time
             # ERROR级：❌ 错误标识，突出致命问题
@@ -367,8 +368,8 @@ class ClientBase():
                 "domain": cookie.domain,
                 "path": cookie.path,
                 "expires": cookie.expires,
-                "secure": cookie.secure,
-                "httponly": cookie.http_only
+                "secure": cookie.secure
+                # "httponly": cookie.http_only
             })
         logger.debug(f"🍪📋 【Cookie提取】req_id={request_id}，提取到{len(cookie_details)}个Cookie详细信息：{cookie_details}")
         return cookie_details
@@ -471,7 +472,7 @@ class ClientBase():
             return default
 
         # 拆分路径片段（按.分割，避开数组内的.）
-        path_segments = re.split(r'\.(?![^\[]*\])', field_path)
+        path_segments = re.split(r'\.(?![^\[]*])', field_path)
         current_data = json_data
 
         try:
@@ -487,7 +488,7 @@ class ClientBase():
                         return default
                 elif '[' in segment and ']' in segment:
                     # 字典嵌套数组场景：例如：slides[0] / items[1]
-                    match = re.match(r'([^\[]+)\[(\d+)\]', segment)
+                    match = re.match(r'([^\[]+)\[(\d+)]', segment)
                     if not match:
                         # 留
                         logger.error(f"❌【字段提取】req_id={request_id}，路径片段{segment}格式错误")
@@ -681,126 +682,126 @@ class ClientBase():
 
 if __name__ == '__main__':
 
-    with ClientBase(base_url="https://httpbin.org", timeout=10, max_retries=3) as client:
-        logger.debug(client.base_url)
-        logger.debug(client.session)
-        logger.debug(client.default_headers)
+    # with ClientBase(base_url="https://httpbin.org", timeout=10, max_retries=3) as client:
+        # logger.debug(client.base_url)
+        # logger.debug(client.session)
+        # logger.debug(client.default_headers)
+        #
+        # response = client.get('/get', params={"test_key": "test_val"})
+        #
+        # logger.debug(client.json(response))
+        # logger.debug(client.text(response))
+        # logger.debug(client.content(response))
+        # logger.debug(client.status_code(response))
+        # logger.debug(client.response_url(response))
+        # logger.debug(client.encoding(response))
+        # logger.debug(client.is_ok(response))
+        # logger.debug(client.headers(response))
+        # logger.debug(client.extract_response_header_by_name(response, 'Server'))
+        #
+        # logger.debug(client.extract_header_date(response))
+        #
+        # logger.debug(client.elapsed_seconds(response))
+        # logger.debug(client.elapsed_details(response))
+        #
+        # logger.debug(client.content_length(response))
+        #
+        # logger.debug(client.extract_json_field(response, 'headers.Accept-Encoding'))
+        #
+        # logger.debug(client.extract_json_path(response, "$.args"))
+        # logger.debug(client.extract_json_path(response, "$.headers.Accept"))
+        #
+        # logger.debug(client.extract_json_filtered(response, {'origin': 'origin', 'args.test_key': 'test_key'}))
+        #
+        # logger.debug(client.extract_response_query_params(response))
+        # logger.debug(client.extract_query_param_by_name(response, 'test_key'))
+        # logger.debug(client.extract_url_path_segments(response))
 
-        response = client.get('/get', params={"test_key": "test_val"})
-
-        logger.debug(client.json(response))
-        logger.debug(client.text(response))
-        logger.debug(client.content(response))
-        logger.debug(client.status_code(response))
-        logger.debug(client.response_url(response))
-        logger.debug(client.encoding(response))
-        logger.debug(client.is_ok(response))
-        logger.debug(client.headers(response))
-        logger.debug(client.extract_response_header_by_name(response, 'Server'))
-
-        logger.debug(client.extract_header_date(response))
-
-        logger.debug(client.elapsed_seconds(response))
-        logger.debug(client.elapsed_details(response))
-
-        logger.debug(client.content_length(response))
-
-        logger.debug(client.extract_json_field(response, 'headers.Accept-Encoding'))
-
-        logger.debug(client.extract_json_path(response, "$.args"))
-        logger.debug(client.extract_json_path(response, "$.headers.Accept"))
-
-        logger.debug(client.extract_json_filtered(response, {'origin': 'origin', 'args.test_key': 'test_key'}))
-
-        logger.debug(client.extract_response_query_params(response))
-        logger.debug(client.extract_query_param_by_name(response, 'test_key'))
-        logger.debug(client.extract_url_path_segments(response))
-    """
-    with ClientBase(base_url="http://httpbin.org", timeout=10,max_retries=3) as client:
-        response = client.get('/redirect/2')
-        # cookies 和 重定向需要换 url
-        logger.debug(client.cookies(response))
-
-        logger.debug(client.redirect_history(response))
-        logger.debug(client.redirect_count(response))
-        logger.debug(client.is_redirect(response))
-        logger.debug(client.is_permanent_redirect(response))
-        logger.debug(client.extract_redirect_chain(response))
+    # with ClientBase(base_url="http://httpbin.org", timeout=10,max_retries=3) as client:
+    #     response = client.get('/redirect/2')
+    #     # cookies 和 重定向需要换 url
+    #     logger.debug(client.cookies(response))
+    #
+    #     logger.debug(client.redirect_history(response))
+    #     logger.debug(client.redirect_count(response))
+    #     logger.debug(client.is_redirect(response))
+    #     logger.debug(client.is_permanent_redirect(response))
+    #     logger.debug(client.extract_redirect_chain(response))
 
     with ClientBase(base_url="https://jsonplaceholder.typicode.com", timeout=10) as client:
         # 获取帖子1的评论（返回评论数组）
         response = client.get("/posts/1/comments")
-        logger.debug(client.extract_json_field(response, '[0].id'))
-        logger.debug(client.extract_json_filtered(response, {'[0]': 'first', '[1].id': "id"}))
+        logger.info(f"数组: {client.extract_json_field(response, '[0].id')}")
+        logger.info(client.extract_json_filtered(response, {'[0]': 'first', '[1].id': "id"}))
 
-    with ClientBase(base_url="https://httpbin.org", timeout=10) as client:
-        # POST自定义数组，httpbin会原样返回在json字段中
-        resp = client.post("/post", json={
-            "name": "测试数组",
-            "tags": ["python", "http", "array"],  # 简单字符串数组
-            "data": [{"id": 1, "value": "a"}, {"id": 2, "value": "b"}]  # 对象数组
-        })
-        # 提取自定义的tags数组
-        tags_array = client.extract_json_field(resp, "json.tags", default=[])
-        print("自定义tags数组：", tags_array)
-        # 提取data数组第1个元素的value
-        data_value = client.extract_json_field(resp, "json.data[1].value", default="")
-        print("data数组第1个元素value：", data_value)
-        data_value_path = client.extract_json_path(resp, '$..id')
-        print(f"所有的id元素:{data_value_path}")
-
-    使用Postman Echo的/post接口（稳定可用）
-    with ClientBase(base_url="https://postman-echo.com", timeout=10) as client:
-        # ========== 场景1：模拟x-www-form-urlencoded格式响应（验证提取方法） ==========
-        print("===== 场景1：提取x-www-form-urlencoded格式响应 =====")
-        # 1. 发送表单数据到/post接口（接口会返回请求的表单数据）
-        form_data = {
-            "name": "张三",
-            "age": "20",
-            "hobby": ["篮球", "游泳"],
-            "url": "https://example.com?a=1&b=2"
-        }
-        resp = client.post(
-            "/post",
-            data=form_data,  # 发送表单数据
-            headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"}
-        )
-
-        # 2. 从响应的JSON中提取表单数据，构造x-www-form-urlencoded格式的字符串
-        resp_json = client.json(resp)
-        form_body = ""
-        for k, vs in resp_json["form"].items():
-            # 处理多值参数（如hobby）
-            if isinstance(vs, list):
-                for v in vs:
-                    form_body += f"{k}={requests.utils.quote(v)}&"
-            else:
-                form_body += f"{k}={requests.utils.quote(vs)}&"
-        form_body = form_body.rstrip("&")  # 去掉末尾的&
-
-        # 3. 模拟响应为x-www-form-urlencoded格式（修改响应对象的属性）
-        # 替换响应体为表单字符串
-        resp._content = form_body.encode("utf-8")
-        # 设置响应头为x-www-form-urlencoded
-        resp.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8"
-
-        # 4. 提取表单数据
-        extracted_form = client.extract_form_data(resp, encoding="utf-8")
-        print(f"提取结果：{extracted_form}")
-
-        # 5. 验证提取结果
-        assert extracted_form == {
-            "name": ["张三"],
-            "age": ["20"],
-            "hobby": ["篮球", "游泳"],
-            "url": ["https://example.com?a=1&b=2"]
-        }, "场景1提取失败"
-        print("场景1验证通过✅\n")
-
-        # ========== 场景2：非表单格式响应（对比验证） ==========
-        print("===== 场景2：非表单格式，提取失败 =====")
-        resp2 = client.get("/json")  # 返回JSON格式
-        extracted_form2 = client.extract_form_data(resp2)
-        print(f"提取结果：{extracted_form2}")  # 输出None
-        assert extracted_form2 is None, "场景2验证失败"
-        print("场景2验证通过✅")"""
+    # with ClientBase(base_url="https://httpbin.org", timeout=10) as client:
+    #     # POST自定义数组，httpbin会原样返回在json字段中
+    #     resp = client.post("/post", json={
+    #         "name": "测试数组",
+    #         "tags": ["python", "http", "array"],  # 简单字符串数组
+    #         "data": [{"id": 1, "value": "a"}, {"id": 2, "value": "b"}]  # 对象数组
+    #     })
+    #     # 提取自定义的tags数组
+    #     tags_array = client.extract_json_field(resp, "json.tags", default=[])
+    #     print("自定义tags数组：", tags_array)
+    #     # 提取data数组第1个元素的value
+    #     data_value = client.extract_json_field(resp, "json.data[1].value", default="")
+    #     print("data数组第1个元素value：", data_value)
+    #     data_value_path = client.extract_json_path(resp, '$..id')
+    #     print(f"所有的id元素:{data_value_path}")
+    #
+    # # 使用Postman Echo的/post接口（稳定可用）
+    # with ClientBase(base_url="https://postman-echo.com", timeout=10) as client:
+    #     # ========== 场景1：模拟x-www-form-urlencoded格式响应（验证提取方法） ==========
+    #     print("===== 场景1：提取x-www-form-urlencoded格式响应 =====")
+    #     # 1. 发送表单数据到/post接口（接口会返回请求的表单数据）
+    #     form_data = {
+    #         "name": "张三",
+    #         "age": "20",
+    #         "hobby": ["篮球", "游泳"],
+    #         "url": "https://example.com?a=1&b=2"
+    #     }
+    #     resp = client.post(
+    #         "/post",
+    #         data=form_data,  # 发送表单数据
+    #         headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"}
+    #     )
+    #
+    #     # 2. 从响应的JSON中提取表单数据，构造x-www-form-urlencoded格式的字符串
+    #     resp_json = client.json(resp)
+    #     form_body = ""
+    #     for k, vs in resp_json["form"].items():
+    #         # 处理多值参数（如hobby）
+    #         if isinstance(vs, list):
+    #             for v in vs:
+    #                 form_body += f"{k}={requests.utils.quote(v)}&"
+    #         else:
+    #             form_body += f"{k}={requests.utils.quote(vs)}&"
+    #     form_body = form_body.rstrip("&")  # 去掉末尾的&
+    #
+    #     # 3. 模拟响应为x-www-form-urlencoded格式（修改响应对象的属性）
+    #     # 替换响应体为表单字符串
+    #     resp._content = form_body.encode("utf-8")
+    #     # 设置响应头为x-www-form-urlencoded
+    #     resp.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8"
+    #
+    #     # 4. 提取表单数据
+    #     extracted_form = client.extract_form_data(resp, encoding="utf-8")
+    #     print(f"提取结果：{extracted_form}")
+    #
+    #     # 5. 验证提取结果
+    #     assert extracted_form == {
+    #         "name": ["张三"],
+    #         "age": ["20"],
+    #         "hobby": ["篮球", "游泳"],
+    #         "url": ["https://example.com?a=1&b=2"]
+    #     }, "场景1提取失败"
+    #     print("场景1验证通过✅\n")
+    #
+    #     # ========== 场景2：非表单格式响应（对比验证） ==========
+    #     print("===== 场景2：非表单格式，提取失败 =====")
+    #     resp2 = client.get("/json")  # 返回JSON格式
+    #     extracted_form2 = client.extract_form_data(resp2)
+    #     print(f"提取结果：{extracted_form2}")  # 输出None
+    #     assert extracted_form2 is None, "场景2验证失败"
+    #     print("场景2验证通过✅")

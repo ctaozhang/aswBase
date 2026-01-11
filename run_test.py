@@ -1,13 +1,10 @@
-# 第一步：优先加载全局日志配置（必须在导入其他模块前执行）
-from core.log_config import setup_global_logging, get_logger
-setup_global_logging()
-
-# 第二步：导入框架依赖和执行用例所需模块
 import os
 import pytest
 from datetime import datetime
 from core.log_config import REPORT_DIR
+from core.log_config import setup_global_logging, get_logger
 
+setup_global_logging()
 # 获取入口日志器
 logger = get_logger(__name__)
 
