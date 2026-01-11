@@ -25,5 +25,6 @@ def run_auto_test():
     pytest.main(pytest_args)
     logger.info(f"✅ 自动化测试用例执行完成，测试报告路径：{report_path}")
 
+
 if __name__ == "__main__":
     run_auto_test()

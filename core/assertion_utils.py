@@ -304,7 +304,7 @@ class ResponseAssertor:
     def assert_business_rule(self, rule_func: callable, rule_desc: str, msg: str = "", **kwargs) -> "ResponseAssertor":
         """
         自定义业务规则断言（支持任意复杂的业务逻辑判断）
-        :param rule_func: 业务规则函数，需接收 response 为第一个参数，可接收额外 kwargs，返回布尔值（True=断言通过，False=断言失败）
+        :param rule_func: 业务规则函数，需接收 res 为第一个参数，可接收额外 kwargs，返回布尔值（True=断言通过，False=断言失败）
         :param rule_desc: 业务规则描述（用于断言失败时的类型说明）
         :param msg: 附加说明信息
         :param kwargs: 传递给 rule_func 的额外关键字参数

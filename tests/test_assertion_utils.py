@@ -293,8 +293,9 @@ def test_assert_business_rule(client, response_assert):
     def business_rule_1(response) -> bool:
         try:
             return response.json().get("json")["code"] == 0
-        except:
-            return False
+            # 捕获最常见的JSON解析错误
+        except Exception:
+            raise
 
     # 2. 构造符合规则的响应
     resp_ok = client.post(
@@ -324,7 +325,7 @@ def test_assert_business_rule(client, response_assert):
         )
 
     # 4. 测试规则函数执行异常的场景
-    def error_rule(response) -> bool:
+    def error_rule() -> bool:
         raise ValueError("规则函数执行出错")
 
     with pytest.raises(AssertionError) as exc_info:

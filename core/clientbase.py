@@ -16,9 +16,9 @@ from core.data_utils import format_python_to_json
 from typing import Optional, Dict, Any, List, Union
 from urllib.parse import urlparse, parse_qs, unquote
 
-
 # 使用封装的 get_logger
 logger = get_logger(__name__)
+
 
 class ClientBase:
     """基类：http基础客户端"""
@@ -108,36 +108,36 @@ class ClientBase:
         # 记录请求耗时
         start_time = time.perf_counter()
         try:
-            respon = self.session.request(method, url, timeout=self.timeout, **kwargs)
+            res = self.session.request(method, url, timeout=self.timeout, **kwargs)
             elapsed_time = time.perf_counter() - start_time
 
             # 给response绑定request_id属性
-            respon.request_id = request_id
+            res.request_id = request_id
 
             # INFO级：🏁 完成标识，快速知晓请求结果
             # 留
-            logger.info(f"🏁 【请求完成】req_id={request_id}，状态码={respon.status_code}，耗时={elapsed_time:.3f}s，重定向次数={len(respon.history)}")
+            logger.info(f"🏁 【请求完成】req_id={request_id}，状态码={res.status_code}，耗时={elapsed_time:.3f}s，重定向次数={len(res.history)}")
 
             # DEBUG级：📜 响应相关，标识响应详情
-            logger.debug(f"📜 【响应详情】req_id={request_id} ↓\n响应头：\n{format_python_to_json(dict(respon.headers))}")
-            logger.debug(f"📜 【响应详情】req_id={request_id}，最终URL：{respon.url}")
+            logger.debug(f"📜 【响应详情】req_id={request_id} ↓\n响应头：\n{format_python_to_json(dict(res.headers))}")
+            logger.debug(f"📜 【响应详情】req_id={request_id}，最终URL：{res.url}")
 
             # 响应体日志（超长截断，区分JSON/文本）
-            if respon.text:
+            if res.text:
                 try:
-                    resp_json = respon.json()
+                    resp_json = res.json()
                     resp_str = json.dumps(resp_json, indent=4, ensure_ascii=False)
                     logger.debug(f"📜 【响应详情】req_id={request_id} ↓ \n响应体[JSON]：\n{resp_str}")
                 except Exception as e:
-                    resp_str = respon.text
+                    resp_str = res.text
                     logger.debug(f"📜 【响应详情】req_id={request_id}，响应体[文本]：\n{resp_str},错误信息:{e}")
 
             # WARNING级：⚠️ 警告标识，提示非致命问题
-            if respon.history:
-                redirect_chain = [resp.url for resp in respon.history] + [respon.url]
+            if res.history:
+                redirect_chain = [resp.url for resp in res.history] + [res.url]
                 logger.warning(f"⚠️ 【请求提醒】req_id={request_id}，请求发生重定向，链路：{redirect_chain}")
 
-            return respon
+            return res
         except requests.RequestException as e:
             elapsed_time = time.perf_counter() - start_time
             # ERROR级：❌ 错误标识，突出致命问题
@@ -146,11 +146,35 @@ class ClientBase:
                 exc_info=True  # 打印完整堆栈跟踪，测试环境调试核心
             )
             raise
+
         # finally:
         #     # INFO级：🔚 收尾标识，知晓请求流程闭环
         #     logger.info(f"🔚 【请求收尾】req_id={request_id}，请求生命周期结束")
 
+    # ==================== 提取所有重复逻辑到私有方法 ====================
+    @staticmethod
+    def _log_and_prepare_params(method: str, data: Any = None, json_data: Any = None):
+        """
+        公共参数日志打印 + JSON序列化方法，消除post/put/patch的重复逻辑
+        :param method: 请求方法（POST/PUT/PATCH）
+        :param data: 表单参数
+        :param json_data: JSON参数
+        """
+        # 1. 打印表单参数日志（post/put/patch通用）
+        if data:
+            logger.debug(f"📊 【{method}请求】表单参数：{str(data)[:1000]}（超长内容已截断）")
+
+        # 2. 打印JSON参数日志（包含序列化容错，post/put/patch通用）
+        if json_data:
+            try:
+                # 注意：patch方法少了indent=4，这里统一保留（不影响功能，仅日志格式）
+                json_str = json.dumps(json_data, indent=4, ensure_ascii=False)[:1000]
+                logger.debug(f"📊 【{method}请求】JSON参数：{json_str}（超长内容已截断）")
+            except Exception as e:
+                logger.debug(f"📊 【{method}请求】JSON参数：序列化失败，原始数据={str(json_data)[:500]}，错误={str(e)[:100]}")
+
     """========== 请求方法封装 =========="""
+
     def get(self, relative_url_path: str, params: Optional[Dict] = None, **kwargs) -> requests.Response:
         """封装GET请求"""
         if params:
@@ -159,46 +183,25 @@ class ClientBase:
             logger.debug(f"📊 【GET请求】查询参数：{params}")
         return self._request('GET', relative_url_path, params=params, **kwargs)
 
-    def post(self, relative_url_path: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
+    def post(self, relative_url_path: str, data: Any = None, json_data: Any = None, **kwargs) -> requests.Response:
         """发送POST请求"""
-        if data:
-            logger.debug(f"📊 【POST请求】表单参数：{str(data)[:1000]}（超长内容已截断）")
-        if json:
-            try:
-                json_str = json.dumps(json, indent=4, ensure_ascii=False)[:1000]
-                logger.debug(f"📊 【POST请求】JSON参数：{json_str}（超长内容已截断）")
-            except Exception as e:
-                logger.debug(f"📊 【POST请求】JSON参数：序列化失败，原始数据={str(json)[:500]}，错误={str(e)[:100]}")
-        return self._request('POST', relative_url_path, data=data, json=json, **kwargs)
+        self._log_and_prepare_params(method="POST", data=data, json_data=json_data)
+        return self._request('POST', relative_url_path, data=data, json=json_data, **kwargs)
 
-    def put(self, relative_url_path: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
+    def put(self, relative_url_path: str, data: Any = None, json_data: Any = None, **kwargs) -> requests.Response:
         """发送PUT请求"""
-        if data:
-            logger.debug(f"📊 【PUT请求】表单参数：{str(data)[:1000]}（超长内容已截断）")
-        if json:
-            try:
-                json_str = json.dumps(json, indent=4, ensure_ascii=False)[:1000]
-                logger.debug(f"📊 【PUT请求】JSON参数：{json_str}（超长内容已截断）")
-            except Exception as e:
-                logger.debug(f"📊 【PUT请求】JSON参数：序列化失败，原始数据={str(json)[:500]}，错误={str(e)[:100]}")
-        return self._request('PUT', relative_url_path, data=data, json=json, **kwargs)
+        self._log_and_prepare_params(method="PUT", data=data, json_data=json_data)
+        return self._request('PUT', relative_url_path, data=data, json=json_data, **kwargs)
 
     def delete(self, relative_url_path: str, **kwargs) -> requests.Response:
         """发送DELETE请求"""
         logger.debug(f"📊 【DELETE请求】URL路径：{relative_url_path}，附加参数：{kwargs}")
         return self._request('DELETE', relative_url_path, **kwargs)
 
-    def patch(self, relative_url_path: str, data: Any = None, json: Any = None, **kwargs) -> requests.Response:
+    def patch(self, relative_url_path: str, data: Any = None, json_data: Any = None, **kwargs) -> requests.Response:
         """发送PATCH请求"""
-        if data:
-            logger.debug(f"📊 【PATCH请求】表单参数：{str(data)[:1000]}（超长内容已截断）")
-        if json:
-            try:
-                json_str = json.dumps(json, ensure_ascii=False)[:1000]
-                logger.debug(f"📊 【PATCH请求】JSON参数：{json_str}（超长内容已截断）")
-            except Exception as e:
-                logger.debug(f"📊 【PATCH请求】JSON参数：序列化失败，原始数据={str(json)[:500]}，错误={str(e)[:100]}")
-        return self._request('PATCH', relative_url_path, data=data, json=json, **kwargs)
+        self._log_and_prepare_params(method="PATCH", data=data, json_data=json_data)
+        return self._request('PATCH', relative_url_path, data=data, json=json_data, **kwargs)
 
     def head(self, relative_url_path: str, **kwargs) -> requests.Response:
         """发送HEAD请求"""
@@ -211,19 +214,21 @@ class ClientBase:
         return self._request('OPTIONS', relative_url_path, **kwargs)
 
     """========== 基础响应元数据提取 =========="""
-    def json(self, response: requests.Response, default: Any = None, encoding: Optional[str] = None) -> Any:
+
+    @staticmethod
+    def json(res: requests.Response, default: Any = None, encoding: Optional[str] = None) -> Any:
         """
         获取JSON格式响应，支持默认值和指定编码
-        :param response: 响应对象
+        :param res: 响应对象
         :param default: 解析失败时返回的默认值
         :param encoding: 响应编码（优先使用，无则自动识别）
         :return: JSON解析结果或默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         try:
             if encoding:
-                response.encoding = encoding
-            result = response.json()
+                res.encoding = encoding
+            result = res.json()
             # DEBUG级：📊 数据提取相关，标识解析成功
             # logger.debug(f"📊 【数据返回】req_id={request_id}，JSON解析成功。")
             return result
@@ -232,91 +237,100 @@ class ClientBase:
             logger.warning(f"⚠️ 【数据返回】req_id={request_id}，JSON解析失败：{str(e)}，返回默认值：{default}")
             return default
 
-    def text(self, response: requests.Response, encoding: Optional[str] = None) -> str:
+    @staticmethod
+    def text(res: requests.Response, encoding: Optional[str] = None) -> str:
         """
         获取文本响应，支持手动指定编码解决乱码
-        :param response: 响应对象
+        :param res: 响应对象
         :param encoding: 手动指定编码（如utf-8、gbk）
         :return: 解码后的文本
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         if encoding:
-            response.encoding = encoding
+            res.encoding = encoding
             logger.debug(f"📝 【文本返回】req_id={request_id}，手动指定编码：{encoding}")
-        # text_content = response.text[:500] if len(response.text) > 500 else response.text
+        # text_content = res.text[:500] if len(res.text) > 500 else res.text
         logger.debug(f"📝 【文本返回】req_id={request_id}，返回文本内容成功")
-        return response.text
+        return res.text
 
-    def content(self, response: requests.Response) -> bytes:
+    @staticmethod
+    def content(res: requests.Response) -> bytes:
         """获取二进制数据响应（如图片、文件）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        content_len = len(response.content) if response.content else 0
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        content_len = len(res.content) if res.content else 0
         logger.debug(f"🗂️ 【二进制返回】req_id={request_id}，返回二进制数据长度：{content_len}字节")
-        return response.content
+        return res.content
 
-    def status_code(self, response: requests.Response) -> int:
+    @staticmethod
+    def status_code(res: requests.Response) -> int:
         """获取响应状态码"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        code = response.status_code
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        code = res.status_code
         logger.debug(f"📊 【状态码提取】req_id={request_id}，响应状态码：{code}")
         return code
 
-    def response_url(self, response: requests.Response) -> str:
+    @staticmethod
+    def response_url(res: requests.Response) -> str:
         """提取响应的最终URL（处理重定向后的实际URL）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        final_url = response.url
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        final_url = res.url
         logger.debug(f"🔗 【URL提取】req_id={request_id}，响应最终URL：{final_url}")
         return final_url
 
-    def encoding(self, response: requests.Response) -> Optional[str]:
+    @staticmethod
+    def encoding(res: requests.Response) -> Optional[str]:
         """提取响应编码"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        enc = response.encoding
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        enc = res.encoding
         logger.debug(f"🔤 【编码提取】req_id={request_id}，响应编码：{enc or '自动识别'}")
         return enc
 
-    def is_ok(self, response: requests.Response) -> bool:
+    @staticmethod
+    def is_ok(res: requests.Response) -> bool:
         """判断请求是否成功（状态码 200-299 返回 True）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        is_success = response.ok
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        is_success = res.ok
         # 留
-        logger.debug(f"✅ 【状态判断】req_id={request_id}，请求是否成功：{is_success}（状态码：{response.status_code}）")
+        logger.debug(f"✅ 【状态判断】req_id={request_id}，请求是否成功：{is_success}（状态码：{res.status_code}）")
         return is_success
 
     """========== 响应头提取 =========="""
-    def headers(self, response: requests.Response) -> Dict[str, str]:
+
+    @staticmethod
+    def headers(res: requests.Response) -> Dict[str, str]:
         """提取全部响应头（转换为普通字典，方便操作）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        header_dict = dict(response.headers)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        header_dict = dict(res.headers)
         logger.debug(f"📨 【响应头提取】req_id={request_id}，提取到{len(header_dict)}个响应头字段")
         return header_dict
 
-    def extract_response_header_by_name(self, response: requests.Response, header_name: str, default: Optional[str] = None) -> Optional[str]:
+    @staticmethod
+    def extract_response_header_by_name(res: requests.Response, header_name: str, default: Optional[str] = None) -> Optional[str]:
         """
         提取指定名称的响应头（忽略大小写）
-        :param response: 响应对象
+        :param res: 响应对象
         :param header_name: 要提取的响应头字段名称(如‘Content-Type’)
         :param default: 字段不存在时返回的默认值
         :return:
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        header_value = response.headers.get(header_name, default)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        header_value = res.headers.get(header_name, default)
         if header_value is default:
             logger.warning(f"⚠️ 【响应头提取】req_id={request_id}，未找到响应头字段：{header_name}，返回默认值：{default}")
         else:
             logger.debug(f"🔍 【响应头提取】req_id={request_id}，提取字段[{header_name}]值：{header_value}")
         return header_value
 
-    def extract_header_date(self, response: requests.Response, header_name: str = "Date", default: Optional[datetime] = None) -> Optional[datetime]:
+    def extract_header_date(self, res: requests.Response, header_name: str = "Date", default: Optional[datetime] = None) -> Optional[datetime]:
         """
         提取日期类型响应头并转换为datetime对象
-        :param response: 响应对象
+        :param res: 响应对象
         :param header_name: 日期类型响应头（默认Date）
         :param default: 解析失败返回的默认值
         :return: datetime对象或默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        date_str = self.extract_response_header_by_name(response, header_name)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        date_str = self.extract_response_header_by_name(res, header_name)
         if not date_str:
             logger.warning(f"⚠️ 【日期头提取】req_id={request_id}，未找到日期响应头[{header_name}]，返回默认值：{default}")
             return default
@@ -330,38 +344,42 @@ class ClientBase:
             return default
 
     """========== Cookie提取 =========="""
-    def cookies(self, response: requests.Response) -> Dict[str, str]:
+
+    @staticmethod
+    def cookies(res: requests.Response) -> Dict[str, str]:
         """提取全部响应Cookie（转换为普通字典，方便操作）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        cookie_dict = dict(response.cookies)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        cookie_dict = dict(res.cookies)
         logger.debug(f"🍪 【Cookie提取】req_id={request_id}，提取到{len(cookie_dict)}个Cookie：{cookie_dict}")
         return cookie_dict
 
-    def extract_response_cookie_by_name(self, response: requests.Response, cookie_name: str, default: Optional[str] = None) -> Optional[str]:
+    @staticmethod
+    def extract_response_cookie_by_name(res: requests.Response, cookie_name: str, default: Optional[str] = None) -> Optional[str]:
         """
         提取指定名称的Cookie值
         Args:
-            response: 响应对象
+            res: 响应对象
             cookie_name: Cookie名称
             default: Cookie不存在时返回的默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        cookie_value = response.cookies.get(cookie_name, default)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        cookie_value = res.cookies.get(cookie_name, default)
         if cookie_value is default:
             logger.warning(f"⚠️ 【Cookie提取】req_id={request_id}，未找到Cookie[{cookie_name}]，返回默认值：{default}")
         else:
             logger.debug(f"🍪🔍 【Cookie提取】req_id={request_id}，提取Cookie[{cookie_name}]值：{cookie_value}")
         return cookie_value
 
-    def extract_cookie_dict_with_details(self, response: requests.Response) -> List[Dict[str, Any]]:
+    @staticmethod
+    def extract_cookie_dict_with_details(res: requests.Response) -> List[Dict[str, Any]]:
         """
         提取Cookie的详细信息（名称、值、域名、路径、过期时间等）
-        :param response: 响应对象
+        :param res: 响应对象
         :return: Cookie详细信息列表
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         cookie_details = []
-        for cookie in response.cookies:
+        for cookie in res.cookies:
             cookie_details.append({
                 "name": cookie.name,
                 "value": cookie.value,
@@ -375,74 +393,83 @@ class ClientBase:
         return cookie_details
 
     """========== 重定向提取 =========="""
-    def redirect_history(self, response: requests.Response) -> List[requests.Response]:
+
+    @staticmethod
+    def redirect_history(res: requests.Response) -> List[requests.Response]:
         """提取重定向历史记录（返回重定向过程中的所有响应对象列表）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        history_count = len(response.history)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        history_count = len(res.history)
         # 修正：删除Cookie相关错误日志，替换为重定向相关正确日志
         logger.debug(f"🔄 【重定向提取】req_id={request_id}，提取到{history_count}条重定向历史记录")
-        return response.history
+        return res.history
 
-    def redirect_count(self, response: requests.Response) -> int:
+    @staticmethod
+    def redirect_count(res: requests.Response) -> int:
         """提取重定向次数"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        count = len(response.history)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        count = len(res.history)
         logger.debug(f"🔄📊 【重定向提取】req_id={request_id}，重定向次数：{count}")
         return count
 
-    def is_redirect(self, response: requests.Response) -> bool:
+    @staticmethod
+    def is_redirect(res: requests.Response) -> bool:
         """判断当前的响应是否为重定向（3xx 状态码且包含 Location 响应头）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        is_redirect_flag = response.is_redirect
-        logger.debug(f"🔄❓ 【重定向判断】req_id={request_id}，是否为当前响应重定向：{is_redirect_flag}（状态码：{response.status_code}）")
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        is_redirect_flag = res.is_redirect
+        logger.debug(f"🔄❓ 【重定向判断】req_id={request_id}，是否为当前响应重定向：{is_redirect_flag}（状态码：{res.status_code}）")
         return is_redirect_flag
 
-    def is_permanent_redirect(self, response: requests.Response) -> bool:
+    @staticmethod
+    def is_permanent_redirect(res: requests.Response) -> bool:
         """判断响应是否为永久重定向（301、308 状态码）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        is_perm_redirect = response.is_permanent_redirect
-        logger.debug(f"🔄🔒 【重定向判断】req_id={request_id}，是否为永久重定向：{is_perm_redirect}（状态码：{response.status_code}）")
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        is_perm_redirect = res.is_permanent_redirect
+        logger.debug(f"🔄🔒 【重定向判断】req_id={request_id}，是否为永久重定向：{is_perm_redirect}（状态码：{res.status_code}）")
         return is_perm_redirect
 
-    def extract_redirect_chain(self, response: requests.Response) -> List[str]:
+    @staticmethod
+    def extract_redirect_chain(res: requests.Response) -> List[str]:
         """
         提取完整重定向链路（包含原始URL和所有重定向URL、最终URL）
-        :param response: 响应对象
+        :param res: 响应对象
         :return: 重定向URL列表
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        chain = [resp.url for resp in response.history]
-        chain.append(response.url)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        chain = [resp.url for resp in res.history]
+        chain.append(res.url)
         logger.debug(f"🔄🔗 【重定向提取】req_id={request_id}，重定向链路：{chain}")
         # 修正：添加返回语句，返回构建完成的重定向链路
         return chain
 
     """========== 耗时与内容长度提取 =========="""
-    def elapsed_seconds(self, response: requests.Response) -> float:
+
+    @staticmethod
+    def elapsed_seconds(res: requests.Response) -> float:
         """提取响应耗时（秒级，微秒精度）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        elapsed = response.elapsed.total_seconds()
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        elapsed = res.elapsed.total_seconds()
         logger.debug(f"⏱️ 【耗时提取】req_id={request_id}，响应耗时：{elapsed:.6f}秒")
         return elapsed
 
-    def elapsed_details(self, response: requests.Response) -> Dict[str, int]:
+    @staticmethod
+    def elapsed_details(res: requests.Response) -> Dict[str, int]:
         """提取响应耗时详情（天、秒、微秒）"""
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         elapsed_detail = {
-            'days': response.elapsed.days,
-            'seconds': response.elapsed.seconds,
-            'microseconds': response.elapsed.microseconds
+            'days': res.elapsed.days,
+            'seconds': res.elapsed.seconds,
+            'microseconds': res.elapsed.microseconds
         }
         logger.debug(f"⏱️📊 【耗时提取】req_id={request_id}，响应耗时详情：{elapsed_detail}")
         return elapsed_detail
 
-    def content_length(self, response: requests.Response) -> Optional[int]:
+    def content_length(self, res: requests.Response) -> Optional[int]:
         """
         提取响应内容长度（从 Content-Length 响应头获取，容错处理）
         注意：如果响应是分块传输（Transfer-Encoding: chunked），返回 None
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        content_len = self.extract_response_header_by_name(response, 'Content-Length')
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        content_len = self.extract_response_header_by_name(res, 'Content-Length')
         if not content_len:
             logger.debug(f"📏 【长度提取】req_id={request_id}，未找到Content-Length响应头（可能为分块传输），返回None")
             return None
@@ -455,18 +482,19 @@ class ClientBase:
             return None
 
     """========== 核心增强：JSON深层数据安全提取 =========="""
-    def extract_json_field(self, response: requests.Response, field_path: str, default: Any = None, encoding: Optional[str] = None) -> Any:
+
+    def extract_json_field(self, res: requests.Response, field_path: str, default: Any = None, encoding: Optional[str] = None) -> Any:
         """
         安全提取JSON深层字段，支持点分隔符（如 "data.user.id"）和列表索引（如 "data.list[0].name"）
-        :param response: 响应对象
+        :param res: 响应对象
         :param field_path: 字段路径（例：data.user.id、data.list[2].title）
         :param default: 字段不存在/解析失败时返回的默认值
         :param encoding: JSON编码
         :return: 字段值或默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         # 先解析完整JSON
-        json_data = self.json(response, default=default, encoding=encoding)
+        json_data = self.json(res, default=default, encoding=encoding)
         if json_data is default:
             logger.warning(f"⚠️ 【字段提取】req_id={request_id}，JSON解析失败，无法提取字段{field_path}")
             return default
@@ -507,24 +535,24 @@ class ClientBase:
             logger.error(f"❌ 【字段提取】req_id={request_id}，字段{field_path}提取失败：{str(e)}，返回默认值：{default}")
             return default
 
-    def extract_json_path(self, response: requests.Response, jsonpath_expr: str, default: Any = None, encoding: Optional[str] = None) -> Any:
+    def extract_json_path(self, res: requests.Response, jsonpath_expr: str, default: Any = None, encoding: Optional[str] = None) -> Any:
         """
         基于JSONPath提取深层数据（支持复杂表达式，需安装 jsonpath-ng）
         示例：jsonpath_expr = "$.data.user[*].id"（提取所有用户id）
-        :param response: 响应对象
+        :param res: 响应对象
         :param jsonpath_expr: JSONPath表达式
         :param default: 提取失败返回的默认值
         :param encoding: JSON编码
         :return: 提取结果或默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         try:
             from jsonpath_ng import parse
         except ImportError:
             logger.error("❌ 【JSONPath提取】缺少依赖 jsonpath-ng，请执行 pip install jsonpath-ng")
             raise ImportError("缺少依赖 jsonpath-ng，请执行 pip install jsonpath-ng")
 
-        json_data = self.json(response, default=default, encoding=encoding)
+        json_data = self.json(res, default=default, encoding=encoding)
         if json_data is default:
             logger.warning(f"⚠️ 【JSONPath提取】req_id={request_id}，JSON解析失败，无法提取表达式{jsonpath_expr}")
             return default
@@ -543,16 +571,16 @@ class ClientBase:
             logger.error(f"❌ 【JSONPath提取】req_id={request_id}，\n表达式{jsonpath_expr}\n提取失败：{str(e)[:200]}，返回默认值：{default}")
             return default
 
-    def extract_json_filtered(self, response: requests.Response, keep_mapping: Dict[str, str], default: Dict = None, encoding: Optional[str] = None) -> Dict:
+    def extract_json_filtered(self, res: requests.Response, keep_mapping: Dict[str, str], default: Dict = None, encoding: Optional[str] = None) -> Dict:
         """
         提取JSON并过滤字段（仅支持字典格式的路径-别名映射，强制自定义键名）
-        :param response: 响应对象
+        :param res: 响应对象
         :param keep_mapping: 必传字典 → 键：要提取的字段路径（如"[0].id"），值：自定义别名（如"first_comment_id"）
         :param default: 提取失败时返回的默认字典
         :param encoding: 响应编码
         :return: 过滤后的新字典（键为自定义别名，值为提取的字段值）
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
         default = default or {}
 
         # 严格校验参数类型：仅接受字典
@@ -562,7 +590,7 @@ class ClientBase:
             return default
 
         # 解析原始JSON（容错：非字典/数组直接返回默认值）
-        json_data = self.json(response, default=default, encoding=encoding)
+        json_data = self.json(res, default=default, encoding=encoding)
         if not isinstance(json_data, (dict, list)):
             logger.error(f"❌ 【JSON过滤】req_id={request_id}，响应数据非字典/数组类型，无法提取字段，返回默认值：{default}")
             return default
@@ -571,7 +599,7 @@ class ClientBase:
         result = {}
         for field_path, alias in keep_mapping.items():
             # 提取字段值
-            field_value = self.extract_json_field(response, field_path, default=None, encoding=encoding)
+            field_value = self.extract_json_field(res, field_path, default=None, encoding=encoding)
 
             if field_value is not None:
                 result[alias] = field_value
@@ -589,30 +617,32 @@ class ClientBase:
         return result or default
 
     """========== 增强：URL与查询参数精细化提取 =========="""
-    def extract_response_query_params(self, response: requests.Response) -> Dict[str, List[str]]:
+
+    @staticmethod
+    def extract_response_query_params(res: requests.Response) -> Dict[str, List[str]]:
         """
         提取响应URL中的查询参数（结构化转换为字典，支持多值参数）
-        :param response: 响应对象
+        :param res: 响应对象
         :return: 查询参数字典（值为列表，兼容多值参数）
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        parsed_url = urlparse(response.url)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        parsed_url = urlparse(res.url)
         query_params = parse_qs(parsed_url.query)
         # 解码URL编码的参数值
         decoded_params = {k: [unquote(v) for v in vs] for k, vs in query_params.items()}
         logger.debug(f"🔍📊 【参数提取】req_id={request_id}，提取URL查询参数：{decoded_params}")
         return decoded_params
 
-    def extract_query_param_by_name(self, response: requests.Response, param_name: str, default: Optional[Union[str, List[str]]] = None) -> Any:
+    def extract_query_param_by_name(self, res: requests.Response, param_name: str, default: Optional[Union[str, List[str]]] = None) -> Any:
         """
         提取指定名称的查询参数值
-        :param response: 响应对象
+        :param res: 响应对象
         :param param_name: 查询参数名称
         :param default: 参数不存在返回的默认值
         :return: 单个参数值（单值）、参数值列表（多值）或默认值
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        query_params = self.extract_response_query_params(response)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        query_params = self.extract_response_query_params(res)
         if param_name not in query_params:
             logger.warning(f"⚠️ 【参数提取】req_id={request_id}，未找到查询参数[{param_name}]，返回默认值：{default}")
             return default
@@ -621,36 +651,37 @@ class ClientBase:
         logger.debug(f"🔍🔑 【参数提取】req_id={request_id}，提取查询参数[{param_name}]值：{result}")
         return result
 
-
-    def extract_url_path_segments(self, response: requests.Response) -> List[str]:
+    @staticmethod
+    def extract_url_path_segments(res: requests.Response) -> List[str]:
         """
         提取响应URL的路径片段（拆分路径为列表）
         示例：https://api.example.com/users/1001 -> ["users", "1001"]
-        :param response: 响应对象
+        :param res: 响应对象
         :return: 路径片段列表
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        parsed_url = urlparse(response.url)
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        parsed_url = urlparse(res.url)
         path_segments = [seg for seg in parsed_url.path.split('/') if seg]
         logger.debug(f"🔗📂 【URL提取】req_id={request_id}，提取URL路径片段：{path_segments}")
         return path_segments
 
     """========== 增强：表单响应与结构化数据提取 =========="""
-    def extract_form_data(self, response: requests.Response, encoding: str = "utf-8") -> Optional[Dict[str, List[str]]]:
+
+    def extract_form_data(self, res: requests.Response, encoding: str = "utf-8") -> Optional[Dict[str, List[str]]]:
         """
         提取响应体中的表单数据（application/x-www-form-urlencoded 格式）
-        :param response: 响应对象
+        :param res: 响应对象
         :param encoding: 编码格式
         :return: 表单参数字典或None
         """
-        request_id = getattr(response, "request_id", str(uuid.uuid4())[:8])
-        content_type = self.extract_response_header_by_name(response, "Content-Type", "")
+        request_id = getattr(res, "request_id", str(uuid.uuid4())[:8])
+        content_type = self.extract_response_header_by_name(res, "Content-Type", "")
         if "application/x-www-form-urlencoded" not in content_type:
             logger.warning(f"⚠️ 【表单提取】req_id={request_id}，响应内容类型[{content_type}]非表单格式，无法提取")
             return None
 
         try:
-            form_text = self.text(response, encoding=encoding)
+            form_text = self.text(res, encoding=encoding)
             form_data = parse_qs(form_text)
             decoded_form = {k: [unquote(v) for v in vs] for k, vs in form_data.items()}
             logger.debug(f"📝📋 【表单提取】req_id={request_id}，提取表单数据：{decoded_form}")
@@ -681,58 +712,57 @@ class ClientBase:
 
 
 if __name__ == '__main__':
-
     # with ClientBase(base_url="https://httpbin.org", timeout=10, max_retries=3) as client:
-        # logger.debug(client.base_url)
-        # logger.debug(client.session)
-        # logger.debug(client.default_headers)
-        #
-        # response = client.get('/get', params={"test_key": "test_val"})
-        #
-        # logger.debug(client.json(response))
-        # logger.debug(client.text(response))
-        # logger.debug(client.content(response))
-        # logger.debug(client.status_code(response))
-        # logger.debug(client.response_url(response))
-        # logger.debug(client.encoding(response))
-        # logger.debug(client.is_ok(response))
-        # logger.debug(client.headers(response))
-        # logger.debug(client.extract_response_header_by_name(response, 'Server'))
-        #
-        # logger.debug(client.extract_header_date(response))
-        #
-        # logger.debug(client.elapsed_seconds(response))
-        # logger.debug(client.elapsed_details(response))
-        #
-        # logger.debug(client.content_length(response))
-        #
-        # logger.debug(client.extract_json_field(response, 'headers.Accept-Encoding'))
-        #
-        # logger.debug(client.extract_json_path(response, "$.args"))
-        # logger.debug(client.extract_json_path(response, "$.headers.Accept"))
-        #
-        # logger.debug(client.extract_json_filtered(response, {'origin': 'origin', 'args.test_key': 'test_key'}))
-        #
-        # logger.debug(client.extract_response_query_params(response))
-        # logger.debug(client.extract_query_param_by_name(response, 'test_key'))
-        # logger.debug(client.extract_url_path_segments(response))
+    # logger.debug(client.base_url)
+    # logger.debug(client.session)
+    # logger.debug(client.default_headers)
+    #
+    # res = client.get('/get', params={"test_key": "test_val"})
+    #
+    # logger.debug(client.json(res))
+    # logger.debug(client.text(res))
+    # logger.debug(client.content(res))
+    # logger.debug(client.status_code(res))
+    # logger.debug(client.response_url(res))
+    # logger.debug(client.encoding(res))
+    # logger.debug(client.is_ok(res))
+    # logger.debug(client.headers(res))
+    # logger.debug(client.extract_response_header_by_name(res, 'Server'))
+    #
+    # logger.debug(client.extract_header_date(res))
+    #
+    # logger.debug(client.elapsed_seconds(res))
+    # logger.debug(client.elapsed_details(res))
+    #
+    # logger.debug(client.content_length(res))
+    #
+    # logger.debug(client.extract_json_field(res, 'headers.Accept-Encoding'))
+    #
+    # logger.debug(client.extract_json_path(res, "$.args"))
+    # logger.debug(client.extract_json_path(res, "$.headers.Accept"))
+    #
+    # logger.debug(client.extract_json_filtered(res, {'origin': 'origin', 'args.test_key': 'test_key'}))
+    #
+    # logger.debug(client.extract_response_query_params(res))
+    # logger.debug(client.extract_query_param_by_name(res, 'test_key'))
+    # logger.debug(client.extract_url_path_segments(res))
 
     # with ClientBase(base_url="http://httpbin.org", timeout=10,max_retries=3) as client:
-    #     response = client.get('/redirect/2')
+    #     res = client.get('/redirect/2')
     #     # cookies 和 重定向需要换 url
-    #     logger.debug(client.cookies(response))
+    #     logger.debug(client.cookies(res))
     #
-    #     logger.debug(client.redirect_history(response))
-    #     logger.debug(client.redirect_count(response))
-    #     logger.debug(client.is_redirect(response))
-    #     logger.debug(client.is_permanent_redirect(response))
-    #     logger.debug(client.extract_redirect_chain(response))
+    #     logger.debug(client.redirect_history(res))
+    #     logger.debug(client.redirect_count(res))
+    #     logger.debug(client.is_redirect(res))
+    #     logger.debug(client.is_permanent_redirect(res))
+    #     logger.debug(client.extract_redirect_chain(res))
 
     with ClientBase(base_url="https://jsonplaceholder.typicode.com", timeout=10) as client:
         # 获取帖子1的评论（返回评论数组）
-        response = client.get("/posts/1/comments")
-        logger.info(f"数组: {client.extract_json_field(response, '[0].id')}")
-        logger.info(client.extract_json_filtered(response, {'[0]': 'first', '[1].id': "id"}))
+        respon = client.get("/posts/1/comments")
+        logger.info(f"数组: {client.extract_json_field(respon, '[0].id')}")
+        logger.info(client.extract_json_filtered(respon, {'[0]': 'first', '[1].id': "id"}))
 
     # with ClientBase(base_url="https://httpbin.org", timeout=10) as client:
     #     # POST自定义数组，httpbin会原样返回在json字段中
