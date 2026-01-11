@@ -1,0 +1,27 @@
+{
+  "development": {
+    "base_url": "https://test-api.example.com",
+    "default_headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8"
+    },
+    "timeout": 30,
+    "max_retries": 2
+  },
+  "staging": {
+    "base_url": "https://stag-api.example.com",
+    "default_headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8"
+    },
+    "timeout": 30,
+    "max_retries": 3
+  },
+  "production": {
+    "base_url": "https://pro-api.example.com",
+    "default_headers": {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8"
+    },
+    "timeout": 30,
+    "max_retries": 5
+  },
+  "currentEnv": "development"
+}

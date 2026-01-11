@@ -9,7 +9,7 @@ logger = get_logger(__name__)
 param_names, param_values, case_ids = parse_yaml_to_params("chuan_can.yaml", "login_cases")
 # 2. 参数化测试函数
 @pytest.mark.parametrize(param_names, param_values, ids=case_ids)
-def test_assert_status_code(client_base, response_assert, username, password, code, assert_config):
+def test_assert_status_code(client, response_assert, username, password, code, assert_config):
     """
     验证参数化用例yaml传参，断言
     client_base: 封装的请求客户端夹具
@@ -26,7 +26,7 @@ def test_assert_status_code(client_base, response_assert, username, password, co
     }
 
     # 发送请求（httpbin的/get接口会原样返回请求参数，可直接验证）
-    response = client_base.get("https://httpbin.org/get", params=params)
+    response = client.get("https://httpbin.org/get", params=params)
 
     # 断言
     assertor = response_assert(response)

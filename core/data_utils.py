@@ -1,3 +1,4 @@
+import os
 import json
 import yaml
 from pathlib import Path
@@ -95,3 +96,84 @@ def format_python_to_json(data: any, indent: int = 4, ensure_ascii: bool = False
         return f"转换失败：数据类型不可序列化 → {str(e)}"
     except Exception as e:
         return f"转换异常：{str(e)}"
+
+# 配置读取，根限制为字典类型
+def read_json_file(file_path: str, encoding: str = "utf-8") -> Dict[str, Any]:
+    """
+    通用的 JSON 文件读取函数，具备完善的异常处理
+
+    Args:
+        file_path: JSON 文件路径（相对/绝对路径）
+        encoding: 文件编码，默认 utf-8
+
+    Returns:
+        解析后的 JSON 数据（字典格式）
+
+    Raises:
+        FileNotFoundError: 文件不存在
+        json.JSONDecodeError: JSON 格式错误
+        PermissionError: 文件无读取权限
+        Exception: 其他未知错误
+    """
+    # 校验文件路径是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"JSON 文件不存在,请确认是否保存在config目录：{file_path}")
+
+    # 校验是否是文件（而非目录）
+    if not os.path.isfile(file_path):
+        raise IsADirectoryError(f"指定路径不是文件：{file_path}")
+
+    try:
+        with open(file_path, "r", encoding=encoding) as f:
+            # 读取并解析 JSON
+            data = json.load(f)
+
+            # 确保返回的是字典（JSON 根节点通常为对象）
+            if not isinstance(data, dict):
+                raise TypeError(f"JSON 文件根节点必须是对象（字典），当前类型：{type(data)}")
+
+            return data
+
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"JSON 格式错误：{str(e)}", e.doc, e.pos)
+    except PermissionError:
+        raise PermissionError(f"无读取权限：{file_path}")
+    except Exception as e:
+        raise Exception(f"读取 JSON 文件失败：{str(e)}")
+
+# 加载环境配置
+def load_env_config(
+        config_file: str = "client_config.json",
+        env_var: str = "currentEnv",
+        encoding: str = "utf-8"
+) -> Dict[str, Any]:
+    """
+    适配多环境的配置加载函数（基于 JSON 配置文件）
+
+    Args:
+        config_file: 配置文件路径，默认 config.json
+        env_var: 默认环境：development
+        encoding: 文件编码
+
+    Returns:
+        指定环境的配置字典
+    """
+    current_file = Path(__file__)
+    # 根目录/config
+    config_path = current_file.parent.parent / 'config' / config_file
+    # 1. 读取 JSON 配置文件
+    all_config = read_json_file(config_path, encoding)
+
+    # 2. 获取当前环境（环境变量 > 默认值）
+    current_env = all_config.get(env_var)
+
+    # 3. 验证环境是否存在
+    if current_env not in all_config:
+        raise ValueError(
+            f"环境 {current_env} 不存在！配置文件中包含的环境：{list(all_config.keys())}"
+        )
+
+    # 4. 返回指定环境的配置
+    env_config = all_config[current_env]
+
+    return env_config

@@ -699,3 +699,103 @@
 2026-01-10 22:44:43 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=5b8d225a，成功提取字段args.password，值：1234562.0
 2026-01-10 22:44:43 - core.clientbase - clientbase.py:667 - close - DEBUG - 🗑️ 【资源释放】HTTP会话已成功关闭
 2026-01-10 22:44:44 - __main__ - run_test.py:30 - run_auto_test - INFO - ✅ 自动化测试用例执行完成，测试报告路径：C:\Users\86134\Documents\aswBase\reports\test_report_20260110_224437.html
+2026-01-11 15:43:39 - core.log_config - log_config.py:97 - setup_global_logging - INFO - ✅ 自动化测试框架 - 全局日志配置加载成功
+2026-01-11 15:43:39 - core.log_config - log_config.py:98 - setup_global_logging - INFO - 📂 日志存储目录：C:\Users\86134\Documents\aswBase\logs
+2026-01-11 15:43:39 - core.log_config - log_config.py:99 - setup_global_logging - INFO - 📂 测试报告目录：C:\Users\86134\Documents\aswBase\reports
+2026-01-11 15:43:39 - __main__ - run_test.py:16 - run_auto_test - INFO - 🚀 开始执行自动化测试用例集
+2026-01-11 15:43:40 - core.clientbase - clientbase.py:52 - __init__ - DEBUG - 🔧 【初始化】重试策略：maxRetry=2，retryCode=[429, 500, 502, 503, 504]
+2026-01-11 15:43:40 - core.clientbase - clientbase.py:158 - get - DEBUG - 📊 【GET请求】查询参数：{'username': 'test', 'password': '123456', 'code': None}
+2026-01-11 15:43:40 - core.clientbase - clientbase.py:87 - _request - INFO - 🚀 【请求开始】req_id=9c12991c，方法=GET，URL=https://httpbin.org/get，超时设置=30s
+2026-01-11 15:43:40 - core.clientbase - clientbase.py:92 - _request - DEBUG - 📋 【请求详情】req_id=9c12991c，请求头：
+{
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Accept": "*/*",
+    "Connection": "keep-alive"
+}
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:118 - _request - INFO - 🏁 【请求完成】req_id=9c12991c，状态码=200，耗时=1.441s，重定向次数=0
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:121 - _request - DEBUG - 📜 【响应详情】req_id=9c12991c ↓
+响应头：
+{
+    "Date": "Sun, 11 Jan 2026 07:43:41 GMT",
+    "Content-Type": "application/json",
+    "Content-Length": "502",
+    "Connection": "keep-alive",
+    "Server": "gunicorn/19.9.0",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Credentials": "true"
+}
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:122 - _request - DEBUG - 📜 【响应详情】req_id=9c12991c，最终URL：https://httpbin.org/get?username=test&password=123456
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:129 - _request - DEBUG - 📜 【响应详情】req_id=9c12991c ↓ 
+响应体[JSON]：
+{
+    "args": {
+        "password": "123456",
+        "username": "test"
+    },
+    "headers": {
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate",
+        "Host": "httpbin.org",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8",
+        "X-Amzn-Trace-Id": "Root=1-696354ad-3b7487a4324fc07008c659d0"
+    },
+    "origin": "120.229.33.101",
+    "url": "https://httpbin.org/get?username=test&password=123456"
+}
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:52 - __init__ - DEBUG - 🔧 【初始化】重试策略：maxRetry=3，retryCode=[429, 500, 502, 503, 504]
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:260 - status_code - DEBUG - 📊 【状态码提取】req_id=9c12991c，响应状态码：200
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:282 - is_ok - DEBUG - ✅ 【状态判断】req_id=9c12991c，请求是否成功：True（状态码：200）
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:260 - status_code - DEBUG - 📊 【状态码提取】req_id=9c12991c，响应状态码：200
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=9c12991c，成功提取字段args.password，值：123456
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:539 - extract_json_path - DEBUG - 📊🔍 【JSONPath提取】req_id=9c12991c，
+表达式$.headers.Host
+提取结果：httpbin.org
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=9c12991c，成功提取字段args.username，值：test
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=9c12991c，成功提取字段args.password，值：123456
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:158 - get - DEBUG - 📊 【GET请求】查询参数：{'username': 'test2', 'password': 1234562.0, 'code': 1993}
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:87 - _request - INFO - 🚀 【请求开始】req_id=b6515be3，方法=GET，URL=https://httpbin.org/get，超时设置=30s
+2026-01-11 15:43:42 - core.clientbase - clientbase.py:92 - _request - DEBUG - 📋 【请求详情】req_id=b6515be3，请求头：
+{
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8",
+    "Accept-Encoding": "gzip, deflate",
+    "Accept": "*/*",
+    "Connection": "keep-alive"
+}
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:118 - _request - INFO - 🏁 【请求完成】req_id=b6515be3，状态码=200，耗时=1.759s，重定向次数=0
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:121 - _request - DEBUG - 📜 【响应详情】req_id=b6515be3 ↓
+响应头：
+{
+    "Date": "Sun, 11 Jan 2026 07:43:41 GMT",
+    "Content-Type": "application/json",
+    "Content-Length": "541",
+    "Connection": "keep-alive",
+    "Server": "gunicorn/19.9.0",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Credentials": "true"
+}
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:122 - _request - DEBUG - 📜 【响应详情】req_id=b6515be3，最终URL：https://httpbin.org/get?username=test2&password=1234562.0&code=1993
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:129 - _request - DEBUG - 📜 【响应详情】req_id=b6515be3 ↓ 
+响应体[JSON]：
+{
+    "args": {
+        "code": "1993",
+        "password": "1234562.0",
+        "username": "test2"
+    },
+    "headers": {
+        "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate",
+        "Host": "httpbin.org",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 SamanthaDoubao/1.85.8",
+        "X-Amzn-Trace-Id": "Root=1-696354ad-6728f62a4ed636c956e29a1a"
+    },
+    "origin": "120.229.33.101",
+    "url": "https://httpbin.org/get?username=test2&password=1234562.0&code=1993"
+}
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:52 - __init__ - DEBUG - 🔧 【初始化】重试策略：maxRetry=3，retryCode=[429, 500, 502, 503, 504]
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:260 - status_code - DEBUG - 📊 【状态码提取】req_id=9c12991c，响应状态码：200
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=b6515be3，成功提取字段args.username，值：test2
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:502 - extract_json_field - DEBUG - 📊 【字段提取】req_id=b6515be3，成功提取字段args.password，值：1234562.0
+2026-01-11 15:43:43 - core.clientbase - clientbase.py:667 - close - DEBUG - 🗑️ 【资源释放】HTTP会话已成功关闭
+2026-01-11 15:43:43 - __main__ - run_test.py:29 - run_auto_test - INFO - ✅ 自动化测试用例执行完成，测试报告路径：C:\Users\86134\Documents\aswBase\reports\test_report_20260111_154339.html

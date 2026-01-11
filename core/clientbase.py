@@ -41,7 +41,7 @@ class ClientBase():
         if max_retries > 0:
             retry_strategy = Retry(total=max_retries,
                   backoff_factor=1,
-                  status_forcelist=[429 , 500, 502, 503, 504],
+                  status_forcelist=[429, 500, 502, 503, 504],
                   allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"])
 
             adapter = HTTPAdapter(max_retries=retry_strategy)
